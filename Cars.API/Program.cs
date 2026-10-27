@@ -1,5 +1,10 @@
 using Cars.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using MediatR;
+using FluentValidation;
+using Cars.Application.Common.Behaviors;
+using Cars.Application.Cars;
+using Cars.API.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,18 +24,24 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:5173");
     });
 });
+
+//Dodanie walidacji
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(GetCarsList.Handler).Assembly);
+});
+
+builder.Services.AddValidatorsFromAssemblyContaining<CreateCar.CommandValidator>();
+
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+
 builder.Services.AddControllers();
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-
 app.UseHttpsRedirection();
 app.UseCors("CorsPolicy");
-
+app.UseMiddleware<ApiExceptionMiddleware>();
 
 using var scope = app.Services.CreateScope();
 var services = scope.ServiceProvider;
